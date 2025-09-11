@@ -46,6 +46,26 @@ int main()
         h_B[i] = static_cast<float>(i % N);
     }
 
+    std::cout << "Matrix A:\n";
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            std::cout << h_A[i * N + j] << " ";
+        }
+        std::cout << "\n";
+    }
+
+    std::cout << "Matrix B:\n";
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            std::cout << h_B[i * N + j] << " ";
+        }
+        std::cout << "\n";
+    }
+
     // Allocate device memory - Now set up the data bounds for the GPU itself
     float *d_A, *d_B, *d_C;
     // Notice pointers and references, d_X points to portion of GPU ?

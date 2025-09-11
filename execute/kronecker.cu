@@ -85,7 +85,7 @@ int main()
     dim3 blocksPerGrid((N + 15) / 16, (N + 15) / 16);
     // <<<>>> is kernel launch syntax, () is kernel parameters
     // <<<>>> thread specs, () regular parameters
-    matMul<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
+    kronecker<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
 
     // Copy result back to host - GPU -> CPU
     cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
@@ -94,7 +94,7 @@ int main()
     std::cout << "Result matrix C:\n";
     for (int i = 0; i < N * N; i++)
     {
-        for (int j = 0; j < N * not_eq; j++)
+        for (int j = 0; j < N * N; j++)
         {
             std::cout << h_C[i * N + j] << " ";
         }

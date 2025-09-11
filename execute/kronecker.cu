@@ -82,13 +82,13 @@ int main()
     // Min 32 threads executed at once, so block sizes mult of 32. 16 x 16 = 256 = 8 warps
     // dim3 is a struct that organizes up to 3D blocks
     dim3 threadsPerBlock(16, 16);
-    dim3 blocksPerGrid((N + 15) / 16, (N + 15) / 16);
+    dim3 blocksPerGrid((N * N + 15) / 16, (N * N + 15) / 16);
     // <<<>>> is kernel launch syntax, () is kernel parameters
     // <<<>>> thread specs, () regular parameters
     kronecker<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
 
     // Copy result back to host - GPU -> CPU
-    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_C, d_C, outSize, cudaMemcpyDeviceToHost);
 
     // Print result matrix C
     std::cout << "Result matrix C:\n";
@@ -96,7 +96,7 @@ int main()
     {
         for (int j = 0; j < N * N; j++)
         {
-            std::cout << h_C[i * N + j] << " ";
+            std::cout << h_C[i * (N * N) + j] << " ";
         }
         std::cout << "\n";
     }

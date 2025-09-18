@@ -139,10 +139,11 @@ int main(int argc, char* argv[])
 
 
     // Allocate / Set data for hosts
-    std::vector<float> h_A(size_A / sizeof(float));
-    std::vector<float> h_b(size_b / sizeof(float));
+    std::vector<float> h_A(inputMatrices.A);
+    std::vector<float> h_b(inputMatrices.B);
     std::vector<float> h_x(inputMatrices.colsA);
-    
+
+    // Convert A to col major
     std::vector<float> h_A_col(h_A.size());
     for (int i = 0; i < inputMatrices.rowsA; ++i)
     {

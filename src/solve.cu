@@ -139,9 +139,32 @@ int main(int argc, char* argv[])
 
 
     // Allocate / Set data for hosts
-    std::vector<float> h_A(inputMatrices.A);
-    std::vector<float> h_b(inputMatrices.B);
+    std::vector<float> h_A(size_A / sizeof(float));
+    std::vector<float> h_b(size_b / sizeof(float));
     std::vector<float> h_x(inputMatrices.colsA);
+    
+    std::vector<float> h_A_col(h_A.size());
+    for (int i = 0; i < inputMatrices.rowsA; ++i)
+    {
+        for (int j = 0; j < inputMatrices.colsA; ++j)
+        {
+            h_A_col[j * inputMatrices.rowsA + i] = h_A[i * inputMatrices.colsA + j];
+        }
+    }
+    h_A = h_A_col;
+
+    // Convert b to column-major (if multiple columns, otherwise optional)
+    std::vector<float> h_b_col(h_b.size());
+    for (int i = 0; i < inputMatrices.rowsB; ++i)
+    {
+        for (int j = 0; j < inputMatrices.colsB; ++j)
+        {
+            h_b_col[j * inputMatrices.rowsB + i] = h_b[i * inputMatrices.colsB + j];
+        }
+    }
+    h_b = h_b_col;
+        
+    
 
     std::cout << "Matrix A:\n";
     for (int i = 0; i < inputMatrices.rowsA; i++)

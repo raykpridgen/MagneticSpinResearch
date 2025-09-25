@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file>";
+        std::cerr << "\nUsage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file>\n\n";
         return 1;
     }
 
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     int size_x = inputMatrices.colsA * sizeof(float);
 
 
-    // Allocate / Set data for hosts
+    // Arrays for the data in the CPU
     std::vector<float> h_A(inputMatrices.A);
     std::vector<float> h_b(inputMatrices.B);
     std::vector<float> h_x(inputMatrices.colsA);
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
     h_b = h_b_col;
         
     
-
+    // Print for debugging
     std::cout << "Matrix A:\n";
     for (int i = 0; i < inputMatrices.rowsA; i++)
     {

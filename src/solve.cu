@@ -2,9 +2,12 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <chrono>
+#include <thread>
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 #include <cusolverSp.h>
+#include <my_expr.cuh>
 
 /**
  * Dense Systems
@@ -29,6 +32,19 @@
 
 // Determines size of one dimension of the matrix
 
+__global__ void apply_expr(
+    const double* __restrict__ a,
+    const double* __restrict__ b,
+    const double* __restrict__ c,
+    double* __restrict__ out,
+    int n
+    )
+{
+    int i =
+}
+/**
+ * FILE I/O
+ */
 struct MatrixInputs
 {
     std::vector<float> A;
@@ -42,10 +58,12 @@ struct MatrixOutput
     int rowsX, colsX;
 };
 
+std::string TIMING_FILE = "../data/timing.txt";
+
 // Read data from CSV
-MatrixInputs readData(const std::string& matrixA_path, const std::string& matrixb_path)
+MatrixInputs* readData(const std::string& matrixA_path, const std::string& matrixb_path)
 {
-    MatrixInputs data;
+    MatrixInputs* data;
 
     // Read in Matrix A from CSV
     std::ifstream finA(matrixA_path);
@@ -116,13 +134,27 @@ int writeData(MatrixOutput output, const std::string& matrixX_path)
     return 0;
 }
 
+MatrixOutput solveSparse(MatrixInputs input)
+{
+    MatrixOutput output;
+    return output;
+}
+
+MatrixOutput solveDense(MatrixInputs input)
+{
+    MatrixOutput output;
+    return output;
+}
+
+
 int main(int argc, char* argv[])
 {
-    if (argc < 4)
+    if (argc < 5)
     {
         std::cerr << "\nUsage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file>\n\n";
         return 1;
     }
+    
 
     // Take files from arguments
     std:: string matrix_A_filename = argv[1];
@@ -154,7 +186,7 @@ int main(int argc, char* argv[])
     }
     h_A = h_A_col;
 
-    // Convert b to column-major (if multiple columns, otherwise optional)
+    // Convert b to column-major : Optional
     std::vector<float> h_b_col(h_b.size());
     for (int i = 0; i < inputMatrices.rowsB; ++i)
     {
@@ -215,11 +247,15 @@ int main(int argc, char* argv[])
     float *d_Workspace;
     cudaMalloc(&d_Workspace, lwork * sizeof(float));   
 
+    // Time solution
+    auto start = std::chrono::high_resolution_clock::now();
+
     // factor A - LU
     cusolverDnSgetrf(handle, m, n, d_A, lda, d_Workspace, d_Ipiv, d_info);
 
     // Solve
     cusolverDnSgetrs(handle, CUBLAS_OP_N, n, 1, d_A, lda, d_Ipiv, d_b, ldb, d_info);
+    auto end = std::chrono::high_resolution_clock::now();
 
     // Copy data back
     cudaMemcpy(h_x.data(), d_b, size_b, cudaMemcpyDeviceToHost);
@@ -235,7 +271,7 @@ int main(int argc, char* argv[])
     outputData.x = h_x;
     outputData.rowsX = inputMatrices.rowsB;
     outputData.colsX = 1;
-    writeData(outputData, matrix_x_filename);
+    //writeData(outputData, matrix_x_filename);
 
 
     // Free device memory
@@ -245,6 +281,17 @@ int main(int argc, char* argv[])
     cudaFree(d_Ipiv);
     cudaFree(d_info);
     cusolverDnDestroy(handle);
+
+    std::chrono::duration<double> elapsed = end - start;
+    
+    std::ofstream outFile(TIMING_FILE);
+    if (!outFile)
+    {
+        std::cerr << "Error opening file for writing\n";
+        return 1;
+    }
+    outFile << "CUDA cusolver solved the " << inputMatrices.rowsA << "degree matrix in: " << elapsed.count() << " seconds\n";
+
 
     return 0;
 }

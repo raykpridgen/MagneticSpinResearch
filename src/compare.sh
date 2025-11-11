@@ -40,6 +40,7 @@ done
 
 echo "Compiling programs"
 g++ solve.cpp -o solve_cpu 
+nvcc solve.cu -lcusolver -o solve_gpu
 
 # Paths to your programs
 PROG1="./solve_cpu"
@@ -65,7 +66,7 @@ do
     if [ $? -ne 0 ]; then
         echo "Program2 failed on run $i"
         exit 1
-    #fi
+    fi
 
     echo "Run #$i complete"
 done

@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         std::cerr << "Error opening file for writing\n";
         return 1;
     }
-    outFile << "C " << A.rows() << " " << elapsed.count() << "\n";
+    outFile << "C\t\t" << A.rows() << "\t\t" << elapsed.count() << "\n";
 
     return 0;
 }

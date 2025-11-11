@@ -280,13 +280,13 @@ int main(int argc, char* argv[])
 
     std::chrono::duration<double> elapsed = end - start;
     
-    std::ofstream outFile(TIMING_FILE);
+    std::ofstream outFile(TIMING_FILE, std::ios::app);
     if (!outFile)
     {
         std::cerr << "Error opening file for writing\n";
         return 1;
     }
-    outFile << "G" << inputMatrices->rowsA << " " << elapsed.count() << "\n";
+    outFile << "G\t\t" << inputMatrices->rowsA << "\t\t" << elapsed.count() << "\n";
 
 
     return 0;

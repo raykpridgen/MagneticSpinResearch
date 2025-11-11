@@ -61,10 +61,10 @@ do
     fi
 
     # Run the second program with the same counter
-    #$PROG2 "../data/A$i.csv" "../data/B$i.csv" "none"
-    #if [ $? -ne 0 ]; then
-    #    echo "Program2 failed on run $i"
-    #    exit 1
+    $PROG2 "../data/test_items/A$RUN_SIZE.csv" "../data/test_items/B$RUN_SIZE.csv" "none"
+    if [ $? -ne 0 ]; then
+        echo "Program2 failed on run $i"
+        exit 1
     #fi
 
     echo "Run #$i complete"

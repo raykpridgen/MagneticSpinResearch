@@ -52,7 +52,7 @@ struct MatrixOutput
 std::string TIMING_FILE = "../data/timing.txt";
 
 // Read data from CSV
-std::make_unique<MatrixInputs> readData(const std::string& matrixA_path, const std::string& matrixb_path)
+std::unique_ptr<MatrixInputs> readData(const std::string& matrixA_path, const std::string& matrixb_path)
 {
     auto data = std::make_unique<MatrixInputs>();
 

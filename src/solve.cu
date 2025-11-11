@@ -140,7 +140,7 @@ MatrixOutput solveDense(MatrixInputs input)
 
 int main(int argc, char* argv[])
 {
-    if (argc < 5)
+    if (argc < 4)
     {
         std::cerr << "\nUsage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file>\n\n";
         return 1;
@@ -190,6 +190,7 @@ int main(int argc, char* argv[])
         
     
     // Print for debugging
+    /*
     std::cout << "Matrix A:\n";
     for (int i = 0; i < inputMatrices->rowsA; i++)
     {
@@ -206,6 +207,10 @@ int main(int argc, char* argv[])
         std::cout << h_b[i] << "\n";
     }
     std::cout << "\n";
+    
+    
+    */
+    
 
     // Allocate device memory
     float *d_A, *d_b;

@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 #include <cusolverSp.h>
-#include <my_expr.cuh>
+
 
 /**
  * Dense Systems
@@ -32,16 +32,7 @@
 
 // Determines size of one dimension of the matrix
 
-__global__ void apply_expr(
-    const double* __restrict__ a,
-    const double* __restrict__ b,
-    const double* __restrict__ c,
-    double* __restrict__ out,
-    int n
-    )
-{
-    int i =
-}
+
 /**
  * FILE I/O
  */
@@ -63,7 +54,7 @@ std::string TIMING_FILE = "../data/timing.txt";
 // Read data from CSV
 MatrixInputs* readData(const std::string& matrixA_path, const std::string& matrixb_path)
 {
-    MatrixInputs* data;
+    auto data = std::make_unique<MatrixInputs>();
 
     // Read in Matrix A from CSV
     std::ifstream finA(matrixA_path);
@@ -73,12 +64,12 @@ MatrixInputs* readData(const std::string& matrixA_path, const std::string& matri
         throw std::runtime_error("Could not open " + matrixA_path);
     }
     
-    finA >> data.rowsA >> data.colsA;
+    finA >> data->rowsA >> data->colsA;
 
-    data.A.resize(data.rowsA * data.colsA);
-    for (int i = 0; i < (data.rowsA * data.colsA); i++)
+    data->A.resize(data->rowsA * data->colsA);
+    for (int i = 0; i < (data->rowsA * data->colsA); i++)
     {
-        finA >> data.A[i];
+        finA >> data->A[i];
     }
     finA.close();
 
@@ -93,16 +84,16 @@ MatrixInputs* readData(const std::string& matrixA_path, const std::string& matri
     int rowsB, colsB;
     finB >> rowsB >> colsB;
 
-    if (rowsB != data.rowsA || colsB != 1)
+    if (rowsB != data->rowsA || colsB != 1)
     {
         throw std::runtime_error("Vector b dimensions do not match matrix A");
     }
-    data.rowsB = rowsB;
-    data.colsB = colsB;
-    data.B.resize(rowsB);
-    for (int i = 0; i < (data.rowsB * data.colsB); i++)
+    data->rowsB = rowsB;
+    data->colsB = colsB;
+    data->B.resize(rowsB);
+    for (int i = 0; i < (data->rowsB * data->colsB); i++)
     {
-        finB >> data.B[i];
+        finB >> data->B[i];
     }
     finB.close();
 
@@ -162,37 +153,37 @@ int main(int argc, char* argv[])
     std:: string matrix_x_filename = argv[3];
 
     // Get data from files and place into structure
-    MatrixInputs inputMatrices = readData(matrix_A_filename, matrix_b_filename);
+    auto inputMatrices = readData(matrix_A_filename, matrix_b_filename);
 
     // Calculate sizes of matrices
-    int size_A = inputMatrices.rowsA * inputMatrices.colsA * sizeof(float);
-    int size_b = inputMatrices.rowsB * inputMatrices.colsB * sizeof(float);
-    int size_x = inputMatrices.colsA * sizeof(float);
+    int size_A = inputMatrices->rowsA * inputMatrices->colsA * sizeof(float);
+    int size_b = inputMatrices->rowsB * inputMatrices->colsB * sizeof(float);
+    int size_x = inputMatrices->colsA * sizeof(float);
 
 
     // Arrays for the data in the CPU
-    std::vector<float> h_A(inputMatrices.A);
-    std::vector<float> h_b(inputMatrices.B);
-    std::vector<float> h_x(inputMatrices.colsA);
+    std::vector<float> h_A(inputMatrices->A);
+    std::vector<float> h_b(inputMatrices->B);
+    std::vector<float> h_x(inputMatrices->colsA);
 
     // Convert A to col major
     std::vector<float> h_A_col(h_A.size());
-    for (int i = 0; i < inputMatrices.rowsA; ++i)
+    for (int i = 0; i < inputMatrices->rowsA; ++i)
     {
-        for (int j = 0; j < inputMatrices.colsA; ++j)
+        for (int j = 0; j < inputMatrices->colsA; ++j)
         {
-            h_A_col[j * inputMatrices.rowsA + i] = h_A[i * inputMatrices.colsA + j];
+            h_A_col[j * inputMatrices->rowsA + i] = h_A[i * inputMatrices->colsA + j];
         }
     }
     h_A = h_A_col;
 
     // Convert b to column-major : Optional
     std::vector<float> h_b_col(h_b.size());
-    for (int i = 0; i < inputMatrices.rowsB; ++i)
+    for (int i = 0; i < inputMatrices->rowsB; ++i)
     {
-        for (int j = 0; j < inputMatrices.colsB; ++j)
+        for (int j = 0; j < inputMatrices->colsB; ++j)
         {
-            h_b_col[j * inputMatrices.rowsB + i] = h_b[i * inputMatrices.colsB + j];
+            h_b_col[j * inputMatrices->rowsB + i] = h_b[i * inputMatrices->colsB + j];
         }
     }
     h_b = h_b_col;
@@ -200,17 +191,17 @@ int main(int argc, char* argv[])
     
     // Print for debugging
     std::cout << "Matrix A:\n";
-    for (int i = 0; i < inputMatrices.rowsA; i++)
+    for (int i = 0; i < inputMatrices->rowsA; i++)
     {
-        for (int j = 0; j < inputMatrices.colsA; j++)
+        for (int j = 0; j < inputMatrices->colsA; j++)
         {
-            std::cout << h_A[i * inputMatrices.colsA + j] << " ";
+            std::cout << h_A[i * inputMatrices->colsA + j] << " ";
         }
         std::cout << "\n";
     }
 
     std::cout << "Matrix B:\n";
-    for (int i = 0; i < inputMatrices.rowsB; i++)
+    for (int i = 0; i < inputMatrices->rowsB; i++)
     {
         std::cout << h_b[i] << "\n";
     }
@@ -229,8 +220,8 @@ int main(int argc, char* argv[])
     cusolverDnHandle_t handle;
     cusolverDnCreate(&handle);
 
-    int m = inputMatrices.rowsA;
-    int n = inputMatrices.colsA;
+    int m = inputMatrices->rowsA;
+    int n = inputMatrices->colsA;
     // Lead dimension of A (usually m)
     int lda = m;
     // Lead dimension of b (usually n)
@@ -269,7 +260,7 @@ int main(int argc, char* argv[])
     // Print result matrix C
     MatrixOutput outputData;
     outputData.x = h_x;
-    outputData.rowsX = inputMatrices.rowsB;
+    outputData.rowsX = inputMatrices->rowsB;
     outputData.colsX = 1;
     //writeData(outputData, matrix_x_filename);
 
@@ -290,7 +281,7 @@ int main(int argc, char* argv[])
         std::cerr << "Error opening file for writing\n";
         return 1;
     }
-    outFile << "CUDA cusolver solved the " << inputMatrices.rowsA << "degree matrix in: " << elapsed.count() << " seconds\n";
+    outFile << "CUDA cusolver solved the " << inputMatrices->rowsA << "degree matrix in: " << elapsed.count() << " seconds\n";
 
 
     return 0;

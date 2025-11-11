@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
         std::cerr << "Error opening file for writing\n";
         return 1;
     }
-    outFile << "CUDA cusolver solved the " << inputMatrices->rowsA << "degree matrix in: " << elapsed.count() << " seconds\n";
+    outFile << "G" << inputMatrices->rowsA << " " << elapsed.count() << "\n";
 
 
     return 0;

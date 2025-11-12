@@ -45,7 +45,7 @@ done
 
 echo "Compiling programs"
 g++ ./src/solve.cpp -o build/solve_cpu 
-nvcc ./src/solve.cu -lcusolver -o build/solve_gpu
+nvcc ./src/solve.cu -lcusolver -Wno-deprecated-declarations -o build/solve_gpu
 
 # Paths to your programs
 PROG1="./build/solve_cpu"
@@ -68,11 +68,11 @@ do
     fi
 
     # Run the second program with the same counter
-    #$PROG2 "./data/test_items/A$RUN_SIZE.csv" "./data/test_items/B$RUN_SIZE.csv" "none"
-    #if [ $? -ne 0 ]; then
-    #    echo "Program2 failed on run $i"
-    #    exit 1
-    #fi
+    $PROG2 "./data/test_items/A$RUN_SIZE.csv" "./data/test_items/B$RUN_SIZE.csv" "none" "$TIMING"
+    if [ $? -ne 0 ]; then
+        echo "Program2 failed on run $i"
+        exit 1
+    fi
 
     echo "Run #$i complete"
 done

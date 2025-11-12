@@ -1,0 +1,5 @@
+Goal	Best approach	Output
+Fixed symbolic operator	Export["Lmatrix.dat", N[L], "Table"]	Load numeric matrix in C++
+Symbolic function (RHS)	Export["rhs.cpp", CFunction["rhs", expr]]	Compilable C/C++ source
+Expression syntax	CForm[expr]	Inline C/C++ syntax
+Large stochastic terms	Export as numeric matrices	Avoid massive inlined expressions

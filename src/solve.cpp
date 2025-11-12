@@ -7,8 +7,6 @@
 #include <chrono>
 #include <thread>
 
-std::string TIMING_FILE = "../data/timing.txt";
-
 void readData(const std::string &matA_path, const std::string &matB_path, Eigen::MatrixXd* matA, Eigen::MatrixXd* matB)
 {
     // Read inputs from file
@@ -56,9 +54,9 @@ void readData(const std::string &matA_path, const std::string &matB_path, Eigen:
 
 int main(int argc, char* argv[])
 {
-    if (argc < 4)
+    if (argc < 5)
     {
-        std::cerr << "\nUsage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file>\n\n";
+        std::cerr << "\nUsage: " << argv[0] << " <matrix_A_file> <matrix_b_file> <matrix_x_file> <timing_file>\n\n";
         return 1;
     }
 
@@ -66,6 +64,7 @@ int main(int argc, char* argv[])
     std:: string matrix_A_filename = argv[1];
     std:: string matrix_b_filename = argv[2];
     std:: string matrix_x_filename = argv[3];
+    std:: string timing_file = argv[4];
     
     // Define a 3x3 matrix A
     Eigen::MatrixXd A;
@@ -85,7 +84,7 @@ int main(int argc, char* argv[])
 
     std::chrono::duration<double> elapsed = end - start;
 
-    std::ofstream outFile(TIMING_FILE, std::ios::app);
+    std::ofstream outFile(timing_file, std::ios::app);
     if (!outFile)
     {
         std::cerr << "Error opening file for writing\n";

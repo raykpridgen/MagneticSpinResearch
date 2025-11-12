@@ -9,8 +9,9 @@ NUM_RUNS=10
 
 # Make files
 mkdir data/test_items
-n=1024
 i=2
+n=(($i ** $NUM_RUNS))
+
 echo "Making files for computation"
 while [ $i -le $n ]
 do
@@ -51,7 +52,7 @@ nvcc ./src/solve.cu -lcusolver -Wno-deprecated-declarations -o build/solve_gpu
 PROG1="./build/solve_cpu"
 PROG2="./build/solve_gpu"
 TIMING="./data/timing.txt"
-> TIMING
+> $TIMING
 
 echo "Computing systems"
 # Loop over counter

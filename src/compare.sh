@@ -41,10 +41,12 @@ done
 echo "Compiling programs"
 g++ solve.cpp -o solve_cpu 
 nvcc solve.cu -lcusolver -o solve_gpu
+mv solve_cpu build
+mv solve_gpu build
 
 # Paths to your programs
-PROG1="./solve_cpu"
-PROG2="./solve_gpu"
+PROG1="./build/solve_cpu"
+PROG2="./build/solve_gpu"
 > ../data/timing.txt 
 
 echo "Computing systems"

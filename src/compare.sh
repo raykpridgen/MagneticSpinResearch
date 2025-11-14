@@ -10,7 +10,7 @@ NUM_RUNS=10
 # Make files
 mkdir data/test_items
 i=2
-n=(($i ** $NUM_RUNS))
+n=$(( i ** NUM_RUNS ))
 
 rm data/test_items/*.csv
 

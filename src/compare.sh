@@ -12,6 +12,8 @@ mkdir data/test_items
 i=2
 n=(($i ** $NUM_RUNS))
 
+rm data/test_items/*.csv
+
 echo "Making files for computation"
 while [ $i -le $n ]
 do

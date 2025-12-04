@@ -1,7 +1,7 @@
 NZFMR (Near Zero Field Magnetoresistance) of recombination current in Si:P
 Stochastic Liouville Equation (total spin basis)
 Commute[A_, B_] := A . B - B . A; AntiCommute[A_, B_] := A . B + B . A
-\[Mu]B = 57.88*10^-9 (*eV/mT*);
+mu B = 57.88*10^-9 (*eV/mT*);
 \[HBar] = 6.582*10^-16(*eV s*);
 g = 2.003(* 2.003*);
 S-T basis (Total Spin)
@@ -76,13 +76,20 @@ value of magnetic field Bx *)
   ParallelTable[{Bz, 
     fudge*Apply[# &, {(Tr[
           Ps . Evaluate[\[Rho] /. 
-             Flatten[NSolve[(-(I/\[HBar]) Commute[
-                    g \[Mu]B Bz * (Sz1 + Sz2 )  + 
-                    g \[Mu]B a (Ix . Sx1 + Iy . Sy1 + 
-                    Iz . Sz1), \[Rho]] - 
-                    1/2 (kS + kD) AntiCommute[Ps, \[Rho]] - 
-                    1/2 kD AntiCommute[Pt, \[Rho]]) + 
-                  1/dim DiagonalMatrix[equalGen] == 0] // Chop]]])}] //
+            Flatten[NSolve[
+              (
+                -(I/\[HBar]) Commute
+                  [
+                    g mu B Bz * (Sz1 + Sz2 )  
+                    + 
+                    g mu B a (Ix . Sx1 + Iy . Sy1 + 
+                    Iz . Sz1), \[Rho]
+                  ]
+                - 1/2 (kS + kD) AntiCommute[Ps, \[Rho]]
+                - 1/2 kD AntiCommute[Pt, \[Rho]]
+              ) 
+              + 
+                1/dim DiagonalMatrix[equalGen] == 0] // Chop]]])}] //
       Chop}, {Bz, range[[1]], range[[2]], range[[3]]}]
   ]
 
@@ -96,21 +103,21 @@ SLEplot1 =
 Just to see what the singlet  and triplet projection operators looks like:
 Ps // MatrixForm
 Pt // MatrixForm
-g \[Mu]B Bz * (Sz1 + Sz2 )  + 
-  g \[Mu]B a (Ix . Sx1 + Iy . Sy1 + Iz . Sz1) // MatrixForm
-g \[Mu]B Bz * (Sz1 + Sz2 )  + 
-   g \[Mu]B 1 (Ix . Sx1 + Iy . Sy1 + Iz . Sz1) // 
+g mu B Bz * (Sz1 + Sz2 )  + 
+  g mu B a (Ix . Sx1 + Iy . Sy1 + Iz . Sz1) // MatrixForm
+g mu B Bz * (Sz1 + Sz2 )  + 
+   g mu B 1 (Ix . Sx1 + Iy . Sy1 + Iz . Sz1) // 
   Eigenvalues // ToRadicals
 dim
 equalGen
-Clear[g, \[Mu]B, \[HBar]]
+Clear[g, mu B, \[HBar]]
 eq = (-(I/\[HBar]) Commute[
-       g \[Mu]B Bz * (Sz1 + Sz2 )  + 
-        g \[Mu]B a (Ix . Sx1 + Iy . Sy1 + Iz . Sz1), \[Rho]] - 
+       g mu B Bz * (Sz1 + Sz2 )  + 
+        g mu B a (Ix . Sx1 + Iy . Sy1 + Iz . Sz1), \[Rho]] - 
      1/2 (kS + kD) AntiCommute[Ps, \[Rho]] - 
      1/2 kD AntiCommute[Pt, \[Rho]]) + 
    1/dim DiagonalMatrix[equalGen] // Chop
-eq /. {Bz -> 1, a -> 1, \[HBar] -> 1, g -> 1, \[Mu]B -> 1, kS -> 1, 
+eq /. {Bz -> 1, a -> 1, \[HBar] -> 1, g -> 1, mu B -> 1, kS -> 1, 
   kD -> 1}
 
 (*Example symbolic expression*)expr[a_, b_, c_] := eq;

@@ -1,5 +1,27 @@
 # Plan for this project -- Modelling mathematica code
 
+## 11/14 Meeting
+
+## 12/2
+- Kronecker products are with 4x4 identity matrix
+- So SLE output is 16x16
+- 
+
+### i(H * rho - rho * H) + 0.5(Ks + Kd)(Pt * rho + rho * Ps) + 0.5Kd(rho * Pt + Pt * rho) + G
+
+- rho (p) is an 8x8 matrix of unknowns
+- each element is representing a solution of the equation
+
+### Inputs 
+H: complete I think
+rho: Finding this matrix, the solution
+Ps, Pt = Matrices, 8x8
+- Ps: Diagonal first two are 1s, rest zero
+- Pt: Identity - Ps
+G: Identity matrix
+Inputs: Bz, a, Ks, Kd, g
+
+
 # Workflow, modules / components needed
 
 ## 1. Base Spin Matrices - Complete

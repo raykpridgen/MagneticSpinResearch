@@ -146,17 +146,17 @@ KronOperators get_lifted_operators(const SpinOperators& orig_operators)
     pauli_z = 0.5 * pauli_z;
 
     // Apply Kronecker(operator, identity4)
-    lifted.Sx1 = Eigen::kroneckerProduct(orig_operators.sx1, id_matrix_2);
-    lifted.Sx2 = Eigen::kroneckerProduct(orig_operators.sx2, id_matrix_2);
-    lifted.Sy1 = Eigen::kroneckerProduct(orig_operators.sy1, id_matrix_2);
-    lifted.Sy2 = Eigen::kroneckerProduct(orig_operators.sy2, id_matrix_2);
-    lifted.Sz1 = Eigen::kroneckerProduct(orig_operators.sz1, id_matrix_2);
-    lifted.Sz2 = Eigen::kroneckerProduct(orig_operators.sz2, id_matrix_2);
+    lifted.Sx1 = Eigen::kroneckerProduct(orig_operators.sx1, id_matrix_2).eval();
+    lifted.Sx2 = Eigen::kroneckerProduct(orig_operators.sx2, id_matrix_2).eval();
+    lifted.Sy1 = Eigen::kroneckerProduct(orig_operators.sy1, id_matrix_2).eval();
+    lifted.Sy2 = Eigen::kroneckerProduct(orig_operators.sy2, id_matrix_2).eval();
+    lifted.Sz1 = Eigen::kroneckerProduct(orig_operators.sz1, id_matrix_2).eval();
+    lifted.Sz2 = Eigen::kroneckerProduct(orig_operators.sz2, id_matrix_2).eval();
 
     // Create Ix, Iy, Iz
-    lifted.Ix = Eigen::kroneckerProduct(id_matrix_4, pauli_x);
-    lifted.Iy = Eigen::kroneckerProduct(id_matrix_4, pauli_y);
-    lifted.Iz = Eigen::kroneckerProduct(id_matrix_4, pauli_z);
+    lifted.Ix = Eigen::kroneckerProduct(id_matrix_4, pauli_x).eval();
+    lifted.Iy = Eigen::kroneckerProduct(id_matrix_4, pauli_y).eval();
+    lifted.Iz = Eigen::kroneckerProduct(id_matrix_4, pauli_z).eval();
     
     return lifted;
 }
@@ -190,20 +190,110 @@ Mat8c construct_hamiltonian(KronOperators krons, double g, double mu, double Bz,
     return term_1 + term_2;
 }
 
-// Compute the Stochastic Liouville Equation
-Mat8c construct_sle(Mat8c H, Mat8c Ps, Mat8c Pt, double rho, double Ks, double Kd)
+// Convert SLE into linear system: M·vec(ρ) = b
+std::pair<Eigen::MatrixXcd, Eigen::VectorXcd> construct_sle_linear_system(
+    const Mat8c& H, const Mat8c& Ps, const Mat8c& Pt,
+    double Ks, double Kd, double hbar, int dim=8)
 {
-    Mat8c G = Mat8c::Identity();
-    return ((H * rho) - (rho * H)) + (0.5 * (Ks + Kd) * ((Pt * rho) + (rho * Ps))) + (0.5 * Kd * ((rho * Pt) * (Pt * rho)) + G);
+    // need to convert the operator equation into M·x = b
+    // where x = vec(rho) is the 64-element vector form of rho
+    
+    const int matrix_size = dim * dim; // 64
+    Eigen::MatrixXcd M = Eigen::MatrixXcd::Zero(matrix_size, matrix_size);
+    Eigen::VectorXcd b = Eigen::VectorXcd::Zero(matrix_size);
+    
+    // Identity matrices for Kronecker products
+    Mat8c I8 = Mat8c::Identity();
+    
+    // Build the linear operator M using Kronecker products
+    // vec([H,ρ]) = (I⊗H - H^T⊗I)·vec(ρ)
+    Eigen::MatrixXcd commutator_op = 
+        Eigen::kroneckerProduct(I8, H).eval() - 
+        Eigen::kroneckerProduct(H.transpose(), I8).eval();
+    
+    // vec({Ps,ρ}) = (I⊗Ps + Ps^T⊗I)·vec(ρ)
+    Eigen::MatrixXcd anticomm_s_op = 
+        Eigen::kroneckerProduct(I8, Ps).eval() + 
+        Eigen::kroneckerProduct(Ps.transpose(), I8).eval();
+    
+    // vec({Pt,ρ}) = (I⊗Pt + Pt^T⊗I)·vec(ρ)
+    Eigen::MatrixXcd anticomm_t_op = 
+        Eigen::kroneckerProduct(I8, Pt).eval() + 
+        Eigen::kroneckerProduct(Pt.transpose(), I8).eval();
+    
+    // Combine into M
+    M = -cplx(0, 1.0/hbar) * commutator_op 
+        - 0.5 * (Ks + Kd) * anticomm_s_op 
+        - 0.5 * Kd * anticomm_t_op;
+    
+    // The right-hand side: -(1/dim)I, vectorized
+    Mat8c norm_matrix = (1.0/dim) * I8;
+    Eigen::Map<const Eigen::VectorXcd> b_vec(norm_matrix.data(), matrix_size);
+    b = -b_vec;
+    
+    return {M, b};
+}
+
+// Solve the system
+Mat8c solve_steady_state(
+    const Eigen::MatrixXcd& M,
+    const Eigen::VectorXcd& b
+)
+{
+    Eigen::VectorXd x = M.colPivHouseholderQr().solve(b);
+    return x;
+}
+
+// Compute singlet population: Tr(Ps·rho)
+double compute_singlet_population(const Mat8c& Ps, const Mat8c& rho)
+{
+    Mat8c product = Ps * rho;
+    return product.trace().real();  // Take real part of the trace
+}
+
+// Main simulation loop
+std::vector<std::pair<double, double>> sweep_magnetic_field(
+    double g, double mu, double a,
+    double Ks, double Kd, double hbar,
+    double Bz_min, double Bz_max, double Bz_step,
+    double fudge = 1.0)
+{
+    std::vector<std::pair<double, double>> results;
+    
+    // Get operators (these don't change with Bz)
+    SpinOperators raw_ops = get_spin_operators();
+    KronOperators kron_ops = get_lifted_operators(raw_ops);
+    ProjOperators proj_ops = get_proj_operators();
+    
+    // Loop over magnetic field values
+    for (double Bz = Bz_min; Bz <= Bz_max; Bz += Bz_step)
+    {
+        // Construct Hamiltonian for this Bz
+        Mat8c H = construct_hamiltonian(kron_ops, g, mu, Bz, a);
+        
+        // Solve for steady-state density matrix
+        std::pair<Eigen::MatrixXcd, Eigen::VectorXcd> system = construct_sle_linear_system(
+            H, proj_ops.Ps, proj_ops.Pt, Ks, Kd, hbar, 8);
+        
+        Mat8c rho = solve_steady_state(system.first, system.second);
+        
+        // Compute singlet population
+        double singlet_pop = compute_singlet_population(proj_ops.Ps, rho);
+        
+        // Apply fudge factor and store result
+        results.push_back({Bz, fudge * singlet_pop});
+    }
+    
+    return results;
 }
 
 // Test above functions
-void test_operations(double g, double mu, double Bz, double a, double rho, double Ks, double Kd)
+void test_operations(double g, double mu, double Bz, double a, double Ks, double Kd, double hbar)
 {
     auto base = getExecutableDir();
     std::filesystem::path outpath = base / ".." / "data" / "ops_check.txt";
     outpath = std::filesystem::canonical(outpath);
-    
+
     std::ofstream out(outpath);
 
     if (!out)
@@ -244,27 +334,27 @@ void test_operations(double g, double mu, double Bz, double a, double rho, doubl
     out << "Hamiltonian =\n" << hamiltonian << "\n" << std::endl;
 
     // Test SLE function
-    out << "rho = " << rho << ", Ks = " << Ks << ", Kd = " << Kd << "\n" << std::endl;
-    Mat8c sle_8 = construct_sle(hamiltonian, proj_ops.Ps, proj_ops.Pt, rho, Ks, Kd);
-    out << "Stochastic Liouville Equation =\n" << sle_8  << "\n" << std::endl;
+    out <<"Ks = " << Ks << ", Kd = " << Kd << ", hbar = " << hbar <<  "\n" << std::endl;
+    std::pair<Eigen::MatrixXcd, Eigen::VectorXcd> system = construct_sle_linear_system(hamiltonian, proj_ops.Ps, proj_ops.Pt, Ks, Kd, hbar);
+    out << "M =\n" << system.first << "b =\n" << system.second  << "\n" << std::endl;
 
     return;
 }
 
 int main(int argc, char* argv[])
 {
-    if (argc != 8)
+    if (argc != 9)
     {
-        std::cout << "Usage: ./program <g> <mu> <Bz> <a> <rho> <Ks> <Kd>" << std::endl;
+        std::cout << "Usage: ./program <g> <mu> <Bz> <a> <Ks> <Kd> <hbar>" << std::endl;
         return 0;
     }
     double g = std::stod(argv[1]);
     double mu = std::stod(argv[2]);
     double Bz = std::stod(argv[3]);
     double a = std::stod(argv[4]);
-    double rho = std::stod(argv[5]);
-    double Ks = std::stod(argv[6]);
-    double Kd = std::stod(argv[7]);
-    test_operations(g, mu, Bz, a, rho, Ks, Kd);
+    double Ks = std::stod(argv[5]);
+    double Kd = std::stod(argv[6]);
+    double hbar = std::stod(argv[7]);
+    test_operations(g, mu, Bz, a, Ks, Kd, hbar);
     return 0;
 }

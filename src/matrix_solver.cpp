@@ -164,7 +164,6 @@ void writeSolution(const string& filename, const VectorXcd& solution) {
         throw runtime_error("Cannot open output file: " + filename);
     }
 
-    file << "{";
     for (int i = 0; i < solution.size(); ++i) {
         complex<double> val = solution(i);
 
@@ -180,7 +179,7 @@ void writeSolution(const string& filename, const VectorXcd& solution) {
             file << ", ";
         }
     }
-    file << "}" << endl;
+    file << endl;
 
     file.close();
 }
@@ -305,7 +304,7 @@ int main(int argc, char* argv[]) {
         // Create RHS vector b
         // For SLE problems, often we want to solve with a normalized constraint
         VectorXcd b = VectorXcd::Ones(n);
-        b = b / sqrt(n);  // Normalize
+        b = -1 * b / sqrt(n);  // Normalize
 
         cout << "RHS vector: ones normalized to unit length" << endl;
         cout << endl;

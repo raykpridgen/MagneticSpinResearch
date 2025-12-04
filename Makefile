@@ -36,6 +36,8 @@ CPU_BIN = $(BUILD_DIR)/operators_cpu
 CUDA_BIN = $(BUILD_DIR)/operators_cuda
 GUI_CPU_BIN = $(BUILD_DIR)/magspin_gui
 GUI_CUDA_BIN = $(BUILD_DIR)/magspin_gui_cuda
+MATRIX_SOLVER_CPU = $(BUILD_DIR)/matrix_solver
+MATRIX_SOLVER_CUDA = $(BUILD_DIR)/matrix_solver_cuda
 
 # Default target (CPU version)
 .PHONY: all
@@ -145,12 +147,47 @@ $(GUI_CUDA_BIN): $(BUILD_DIR)/moc_main_window.cpp $(BUILD_DIR)/moc_simulation_wo
 gui-all: gui gui-cuda
 
 # ============================================
+# Matrix Solver for Mathematica Integration
+# ============================================
+
+# Matrix solver CPU version
+.PHONY: matrix-solver
+matrix-solver: $(MATRIX_SOLVER_CPU)
+
+$(MATRIX_SOLVER_CPU): $(SRC_DIR)/matrix_solver.cpp
+	@echo "Building matrix solver (CPU version)..."
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $< -o $@
+	@echo "Matrix solver binary created: $@"
+	@echo "Usage: $@ <matrix_file.txt> [--cuda]"
+
+# Matrix solver CUDA version
+.PHONY: matrix-solver-cuda
+matrix-solver-cuda: $(MATRIX_SOLVER_CUDA)
+
+$(MATRIX_SOLVER_CUDA): $(SRC_DIR)/matrix_solver.cpp $(CUDA_SRC)
+	@echo "Building matrix solver (CUDA version)..."
+	@mkdir -p $(BUILD_DIR)
+	# Compile CUDA code
+	$(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c $(CUDA_SRC) -o $(BUILD_DIR)/cuda_solver_matrix.o
+	# Compile and link matrix solver with CUDA
+	$(CXX) $(CXXFLAGS) -DUSE_CUDA $< $(BUILD_DIR)/cuda_solver_matrix.o \
+		-o $@ -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas
+	@echo "Matrix solver (CUDA) binary created: $@"
+	@echo "Usage: $@ <matrix_file.txt> --cuda"
+
+# Build both matrix solver versions
+.PHONY: matrix-solver-all
+matrix-solver-all: matrix-solver matrix-solver-cuda
+
+# ============================================
 # Clean build artifacts
 .PHONY: clean
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -f $(BUILD_DIR)/operators_cpu $(BUILD_DIR)/operators_cuda $(BUILD_DIR)/*.o
 	rm -f $(BUILD_DIR)/magspin_gui $(BUILD_DIR)/magspin_gui_cuda
+	rm -f $(BUILD_DIR)/matrix_solver $(BUILD_DIR)/matrix_solver_cuda
 	rm -f $(BUILD_DIR)/moc_*.cpp
 
 # Test CPU version
@@ -203,6 +240,11 @@ help:
 	@echo "  make gui-cuda    - Build Qt GUI (CUDA version)"
 	@echo "  make gui-all     - Build both GUI versions"
 	@echo ""
+	@echo "Mathematica Integration Targets:"
+	@echo "  make matrix-solver      - Build matrix solver (CPU version)"
+	@echo "  make matrix-solver-cuda - Build matrix solver (CUDA version)"
+	@echo "  make matrix-solver-all  - Build both matrix solver versions"
+	@echo ""
 	@echo "Utility Targets:"
 	@echo "  make clean       - Remove build artifacts"
 	@echo "  make help        - Show this help message"
@@ -214,6 +256,10 @@ help:
 	@echo "GUI Usage examples:"
 	@echo "  ./build/magspin_gui              # CPU version"
 	@echo "  ./build/magspin_gui_cuda         # CUDA version"
+	@echo ""
+	@echo "Matrix Solver Usage examples:"
+	@echo "  ./build/matrix_solver data/mma_out/matrix_data_1.txt"
+	@echo "  ./build/matrix_solver_cuda data/mma_out/matrix_data_1.txt --cuda"
 	@echo ""
 	@echo "Requirements:"
 	@echo "  - Eigen3 library (required for all builds)"

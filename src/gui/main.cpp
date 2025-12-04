@@ -1,10 +1,16 @@
 #include <QApplication>
 #include "main_window.h"
 #include <QStyleFactory>
+#include <QMetaType>
+#include <QVector>
+#include <QPointF>
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    // Register meta types for cross-thread signal/slot connections
+    qRegisterMetaType<QVector<QPointF>>("QVector<QPointF>");
 
     // Set application metadata
     app.setApplicationName("Magnetic Field Simulation");

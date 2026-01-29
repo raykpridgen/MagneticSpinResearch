@@ -1,0 +1,18 @@
+# Build artifacts
+computation/build/
+
+# Output files (except .gitkeep)
+output/*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+visualization/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

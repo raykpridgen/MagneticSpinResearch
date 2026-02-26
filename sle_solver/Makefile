@@ -25,11 +25,18 @@ SOURCES = $(SRC_DIR)/operators.cpp \
           $(SRC_DIR)/sle_solver.cpp \
           $(SRC_DIR)/main.cpp
 
+# Test source files (shared libs + test runner)
+TEST_SOURCES = $(SRC_DIR)/operators.cpp \
+               $(SRC_DIR)/hamiltonian.cpp \
+               $(SRC_DIR)/sle_solver.cpp \
+               $(SRC_DIR)/test_suite.cpp
+
 CUDA_SRC = $(SRC_DIR)/cuda_solver.cu
 
 # Output binaries
 CPU_BIN = $(BUILD_DIR)/sle_solver_cpu
 GPU_BIN = $(BUILD_DIR)/sle_solver_cuda
+TEST_BIN = $(BUILD_DIR)/sle_test_suite
 
 # Default target
 .PHONY: all
@@ -59,6 +66,22 @@ $(GPU_BIN): $(SOURCES) $(CUDA_SRC) | $(BUILD_DIR) $(OUTPUT_DIR)
 # Build both versions
 .PHONY: both
 both: cpu gpu
+
+# Test suite
+.PHONY: test
+test: $(TEST_BIN)
+	@echo ""
+	@./$(TEST_BIN)
+
+.PHONY: test-report
+test-report: $(TEST_BIN) | $(OUTPUT_DIR)
+	@echo ""
+	@./$(TEST_BIN) --report
+
+$(TEST_BIN): $(TEST_SOURCES) | $(BUILD_DIR) $(OUTPUT_DIR)
+	@echo "Building test suite..."
+	$(CXX) $(CXXFLAGS) $(TEST_SOURCES) -o $@
+	@echo "Test binary created: $@"
 
 # Create directories
 $(BUILD_DIR):
@@ -117,6 +140,8 @@ help:
 	@echo "  make clean       Remove build artifacts"
 	@echo ""
 	@echo "Test targets:"
+	@echo "  make test        Build and run the test suite"
+	@echo "  make test-report Build, run tests, and write detailed report to output/"
 	@echo "  make test-cpu    Build and test CPU version"
 	@echo "  make test-gpu    Build and test GPU version"
 	@echo "  make benchmark   Compare CPU vs GPU performance"

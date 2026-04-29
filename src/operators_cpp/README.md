@@ -23,6 +23,32 @@ make operators-cpp
 ./build/operators_cpp_sweep --no-show
 ```
 
+Solver backend selection:
+- default: auto (uses CUDA solve path when compiled and a GPU is available)
+- `--cpu`: force Eigen CPU solve path
+- `--gpu`: require CUDA solve path
+
+Problem-size controls:
+- `--j-numerators 1,1,1,1` sets per-nucleus spin numerators directly
+- `--n-nuclei N --nuclear-j-numerator J` builds a uniform set of `N` nuclei with numerator `J`
+- if `--h-number` is not supplied with `--n-nuclei`, it defaults to `N`
+
+## CPU vs GPU timing
+
+```bash
+src/operators_cpp/benchmark_backends.sh
+```
+
+Size-ladder examples:
+
+```bash
+# Uniform spin-1/2 nuclei counts
+src/operators_cpp/benchmark_backends.sh --nuclei-list "1,2,3,4,5" -- --bz-min -5 --bz-max 5 --bz-step 0.05
+
+# Explicit per-size j-numerator sets
+src/operators_cpp/benchmark_backends.sh --sizes "1;1,1;1,1,1;1,3,3,3"
+```
+
 ## Verify C++ vs Python
 
 ```bash

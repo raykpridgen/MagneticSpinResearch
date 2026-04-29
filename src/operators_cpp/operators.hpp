@@ -31,6 +31,8 @@ struct SolverConfig {
     double k_d = 1e6;
     int h_number = 1;
     std::vector<int> j_numerators = {1};
+    bool use_cuda_if_available = true;
+    bool require_cuda = false;
     PhysicalConstants constants;
 };
 
@@ -50,6 +52,10 @@ public:
     explicit Solver(const SolverConfig& cfg);
     cplx solve_point(double bz) const;
     SweepResult sweep(const SweepConfig& sweep_cfg) const;
+    bool cuda_enabled() const;
+    int total_dim() const;
+    int liouville_dim() const;
+    int nuclear_count() const;
 
 private:
     SolverConfig cfg_;
@@ -79,6 +85,11 @@ private:
     static MatXc electron_op_total_basis(const MatXc& op_single, bool first);
     static std::pair<MatXc, VecXc> build_system(const MatXc& h, const MatXc& ps, const MatXc& pt,
                                                 double k_s, double k_d, double hbar, int dim);
+    bool should_use_cuda() const;
+    bool ensure_cuda_status() const;
+    mutable bool cuda_checked_ = false;
+    mutable bool cuda_available_ = false;
+    mutable bool cuda_fallback_warned_ = false;
 };
 
 void write_csv(const std::string& out_path, const SweepResult& result);

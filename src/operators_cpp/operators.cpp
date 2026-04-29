@@ -1,8 +1,13 @@
 #include "operators.hpp"
 #include <cmath>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <stdexcept>
+
+#ifdef MAGSPIN_USE_CUDA
+#include "solve.hpp"
+#endif
 
 namespace magspin {
 
@@ -176,9 +181,69 @@ cplx Solver::solve_point(double bz) const {
     MatXc h = bz * h0_ + hsum_;
     auto [L, source] = build_system(h, proj_singlet_, proj_triplet_, cfg_.k_s, cfg_.k_d,
                                     cfg_.constants.hbar, total_dim_);
-    VecXc vec_rho = L.fullPivLu().solve(source);
+    VecXc vec_rho(source.size());
+    bool solved_on_cuda = false;
+
+    if (should_use_cuda()) {
+#ifdef MAGSPIN_USE_CUDA
+        try {
+            solve_cuda_complex(L.data(), source.data(), vec_rho.data(), L.rows());
+            solved_on_cuda = true;
+        } catch (const std::exception& ex) {
+            if (!cuda_fallback_warned_) {
+                std::cerr << "CUDA solve failed (" << ex.what()
+                          << "); falling back to Eigen CPU solver.\n";
+                cuda_fallback_warned_ = true;
+            }
+        }
+#endif
+    }
+
+    if (!solved_on_cuda) {
+        vec_rho = L.fullPivLu().solve(source);
+    }
+
     MatXc rho = Eigen::Map<const MatXc>(vec_rho.data(), total_dim_, total_dim_);
     return (proj_singlet_ * rho).trace();
+}
+
+bool Solver::ensure_cuda_status() const {
+#ifdef MAGSPIN_USE_CUDA
+    if (!cuda_checked_) {
+        cuda_available_ = check_cuda_available();
+        cuda_checked_ = true;
+    }
+    return cuda_available_;
+#else
+    return false;
+#endif
+}
+
+bool Solver::should_use_cuda() const {
+    if (!cfg_.use_cuda_if_available) {
+        return false;
+    }
+    const bool available = ensure_cuda_status();
+    if (cfg_.require_cuda && !available) {
+        throw std::runtime_error("CUDA was requested but no CUDA device is available");
+    }
+    return available;
+}
+
+bool Solver::cuda_enabled() const {
+    return should_use_cuda();
+}
+
+int Solver::total_dim() const {
+    return total_dim_;
+}
+
+int Solver::liouville_dim() const {
+    return total_dim_ * total_dim_;
+}
+
+int Solver::nuclear_count() const {
+    return static_cast<int>(cfg_.j_numerators.size());
 }
 
 SweepResult Solver::sweep(const SweepConfig& sweep_cfg) const {

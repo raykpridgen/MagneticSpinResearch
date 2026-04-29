@@ -29,6 +29,8 @@ DATA_DIR = data
 CPP_SRC = $(SRC_DIR)/operators.cpp
 CUDA_SRC = $(SRC_DIR)/cuda_solver.cu
 OP_CPP_SRC = $(OP_CPP_DIR)/operators.cpp $(OP_CPP_DIR)/sweep_plot.cpp
+OP_CPP_CUDA_SRC = $(OP_CPP_DIR)/solve.cu
+OP_CPP_CUDA_OBJ = $(BUILD_DIR)/operators_cpp_solve.o
 
 # GUI source files
 GUI_MAIN = $(GUI_DIR)/main.cpp
@@ -164,11 +166,18 @@ gui-all: gui gui-cuda
 .PHONY: operators-cpp
 operators-cpp: $(OPERATORS_CPP_BIN)
 
-$(OPERATORS_CPP_BIN): $(OP_CPP_SRC)
+$(OPERATORS_CPP_BIN): $(OP_CPP_SRC) $(OP_CPP_DIR)/operators.hpp $(OP_CPP_DIR)/solve.hpp $(OP_CPP_CUDA_SRC)
 	@echo "Building operators C++ sweep + matplotlib-cpp target..."
 	@[ -f third_party/matplotlib-cpp/matplotlibcpp.h ] || (echo "Missing third_party/matplotlib-cpp/matplotlibcpp.h" && echo "Install header from https://github.com/lava/matplotlib-cpp" && exit 1)
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) -o $@ $(PY_LDFLAGS) $(PY_RPATH)
+	@if command -v $(NVCC) >/dev/null 2>&1; then \
+		echo "Compiling CUDA backend for operators_cpp..."; \
+		$(NVCC) $(NVCCFLAGS) -c $(OP_CPP_CUDA_SRC) -o $(OP_CPP_CUDA_OBJ); \
+		$(CXX) $(CXXFLAGS) -DMAGSPIN_USE_CUDA -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) $(OP_CPP_CUDA_OBJ) -o $@ $(PY_LDFLAGS) $(PY_RPATH) -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas; \
+	else \
+		echo "nvcc not found; building CPU-only operators_cpp binary."; \
+		$(CXX) $(CXXFLAGS) -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) -o $@ $(PY_LDFLAGS) $(PY_RPATH); \
+	fi
 	@echo "Operators C++ binary created: $@"
 
 .PHONY: operators-venv

@@ -114,3 +114,28 @@ Inputs: Bz, a, Ks, Kd, g
 
 ## Write to CSV
 - Vector of (Bz, value)'s 
+
+
+
+# Convert Python Code to CPP / CUDA
+
+Use:
+    Eigen
+    matplotlib-cpp
+    QPP
+
+
+constants:
+    const double hbar = 6.582119569e-16; // eV·s
+    const double uB = 5.788381806e-5;    // eV/T
+    const double g = -2.00231930436256;
+
+#include <Eigen/Sparse>
+#include <Eigen/SparseLU>
+#include <Eigen/Dense>
+#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <cmath>
+#include <complex>
+
+Manual Liovillian Construction:
+L(ρ)=−i[H,ρ]+k∑​Lk​ρLk†​−21​{Lk†​Lk​,ρ}

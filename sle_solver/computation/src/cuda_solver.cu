@@ -5,7 +5,7 @@
 #include <iostream>
 #include "cuda_solver.hpp"
 
-// CUDA error checking macro
+// error checking macro
 #define CUDA_CHECK(call) \
     do { \
         cudaError_t err = call; \

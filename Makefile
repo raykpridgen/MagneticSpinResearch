@@ -9,6 +9,9 @@ MOC = $(shell which moc-qt6 2>/dev/null || which moc-qt5 2>/dev/null || find /us
 # Common flags
 CXXFLAGS = -std=c++17 -O2 -I/usr/include/eigen3 -Isrc
 NVCCFLAGS = -std=c++17 -O2 -I/usr/include/eigen3 -Isrc
+PY_INCLUDES = $(shell python3-config --includes 2>/dev/null)
+PY_LDFLAGS = $(shell python3-config --embed --ldflags 2>/dev/null || python3-config --ldflags 2>/dev/null)
+PY_RPATH = -Wl,-rpath,$(shell python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')")
 
 # Qt settings
 QT_CXXFLAGS = $(shell pkg-config --cflags Qt6Widgets Qt6PrintSupport 2>/dev/null || pkg-config --cflags Qt5Widgets Qt5PrintSupport)
@@ -18,12 +21,14 @@ QT_AVAILABLE = $(shell pkg-config --exists Qt6Widgets 2>/dev/null && echo "Qt6" 
 # Directories
 SRC_DIR = src
 GUI_DIR = $(SRC_DIR)/gui
+OP_CPP_DIR = $(SRC_DIR)/operators_cpp
 BUILD_DIR = build
 DATA_DIR = data
 
 # Source files
 CPP_SRC = $(SRC_DIR)/operators.cpp
 CUDA_SRC = $(SRC_DIR)/cuda_solver.cu
+OP_CPP_SRC = $(OP_CPP_DIR)/operators.cpp $(OP_CPP_DIR)/sweep_plot.cpp
 
 # GUI source files
 GUI_MAIN = $(GUI_DIR)/main.cpp
@@ -38,6 +43,8 @@ GUI_CPU_BIN = $(BUILD_DIR)/magspin_gui
 GUI_CUDA_BIN = $(BUILD_DIR)/magspin_gui_cuda
 MATRIX_SOLVER_CPU = $(BUILD_DIR)/matrix_solver
 MATRIX_SOLVER_CUDA = $(BUILD_DIR)/matrix_solver_cuda
+OPERATORS_CPP_BIN = $(BUILD_DIR)/operators_cpp_sweep
+VENV_DIR = .venv
 
 # Default target (CPU version)
 .PHONY: all
@@ -150,6 +157,32 @@ gui-all: gui gui-cuda
 # Matrix Solver for Mathematica Integration
 # ============================================
 
+# ============================================
+# Python sle.py to C++ operators module
+# ============================================
+
+.PHONY: operators-cpp
+operators-cpp: $(OPERATORS_CPP_BIN)
+
+$(OPERATORS_CPP_BIN): $(OP_CPP_SRC)
+	@echo "Building operators C++ sweep + matplotlib-cpp target..."
+	@[ -f third_party/matplotlib-cpp/matplotlibcpp.h ] || (echo "Missing third_party/matplotlib-cpp/matplotlibcpp.h" && echo "Install header from https://github.com/lava/matplotlib-cpp" && exit 1)
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) -o $@ $(PY_LDFLAGS) $(PY_RPATH)
+	@echo "Operators C++ binary created: $@"
+
+.PHONY: operators-venv
+operators-venv:
+	@echo "Creating Python venv for verification..."
+	python3 -m venv $(VENV_DIR)
+	$(VENV_DIR)/bin/python -m pip install --upgrade pip
+	$(VENV_DIR)/bin/pip install -r $(OP_CPP_DIR)/requirements.txt
+
+.PHONY: operators-verify
+operators-verify: operators-cpp operators-venv
+	@echo "Running Python vs C++ verification..."
+	$(VENV_DIR)/bin/python $(OP_CPP_DIR)/verify_cpp_vs_python.py --cpp-bin $(OPERATORS_CPP_BIN)
+
 # Matrix solver CPU version
 .PHONY: matrix-solver
 matrix-solver: $(MATRIX_SOLVER_CPU)
@@ -188,6 +221,7 @@ clean:
 	rm -f $(BUILD_DIR)/operators_cpu $(BUILD_DIR)/operators_cuda $(BUILD_DIR)/*.o
 	rm -f $(BUILD_DIR)/magspin_gui $(BUILD_DIR)/magspin_gui_cuda
 	rm -f $(BUILD_DIR)/matrix_solver $(BUILD_DIR)/matrix_solver_cuda
+	rm -f $(BUILD_DIR)/operators_cpp_sweep
 	rm -f $(BUILD_DIR)/moc_*.cpp
 
 # Test CPU version
@@ -244,6 +278,11 @@ help:
 	@echo "  make matrix-solver      - Build matrix solver (CPU version)"
 	@echo "  make matrix-solver-cuda - Build matrix solver (CUDA version)"
 	@echo "  make matrix-solver-all  - Build both matrix solver versions"
+	@echo ""
+	@echo "sle.py C++ Port Targets:"
+	@echo "  make operators-cpp      - Build src/operators_cpp sweep + matplotlib-cpp binary"
+	@echo "  make operators-venv     - Create .venv and install Python verification deps"
+	@echo "  make operators-verify   - Run C++/Python output equivalence check"
 	@echo ""
 	@echo "Utility Targets:"
 	@echo "  make clean       - Remove build artifacts"

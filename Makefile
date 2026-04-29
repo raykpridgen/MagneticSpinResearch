@@ -9,6 +9,11 @@ MOC = $(shell which moc-qt6 2>/dev/null || which moc-qt5 2>/dev/null || find /us
 # Common flags
 CXXFLAGS = -std=c++17 -O2 -I/usr/include/eigen3 -Isrc
 NVCCFLAGS = -std=c++17 -O2 -I/usr/include/eigen3 -Isrc
+CXX_MAJOR = $(shell $(CXX) -dumpfullversion -dumpversion | cut -d. -f1)
+FS_LIBS =
+ifeq ($(shell [ "$(CXX_MAJOR)" -lt 9 ] >/dev/null 2>&1 && echo yes),yes)
+FS_LIBS += -lstdc++fs
+endif
 PY_INCLUDES = $(shell python3-config --includes 2>/dev/null)
 PY_LDFLAGS = $(shell python3-config --embed --ldflags 2>/dev/null || python3-config --ldflags 2>/dev/null)
 PY_RPATH = -Wl,-rpath,$(shell python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')")
@@ -59,7 +64,7 @@ cpu: $(CPU_BIN)
 $(CPU_BIN): $(CPP_SRC)
 	@echo "Building CPU-only version..."
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@ $(FS_LIBS)
 	@echo "CPU binary created: $@"
 
 # CUDA-accelerated version
@@ -73,7 +78,7 @@ $(CUDA_BIN): $(CPP_SRC) $(CUDA_SRC)
 	$(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c $(CUDA_SRC) -o $(BUILD_DIR)/cuda_solver.o
 	# Then compile C++ and link with CUDA object
 	$(CXX) $(CXXFLAGS) -DUSE_CUDA $(CPP_SRC) $(BUILD_DIR)/cuda_solver.o \
-		-o $@ -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas
+		-o $@ -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas $(FS_LIBS)
 	@echo "CUDA binary created: $@"
 
 # Build both versions
@@ -129,7 +134,7 @@ $(GUI_CPU_BIN): $(BUILD_DIR)/moc_main_window.cpp $(BUILD_DIR)/moc_simulation_wor
 		$(GUI_MAIN) $(GUI_MAINWINDOW) $(GUI_WORKER) $(GUI_QCUSTOMPLOT) \
 		$(BUILD_DIR)/moc_main_window.cpp $(BUILD_DIR)/moc_simulation_worker.cpp $(BUILD_DIR)/moc_qcustomplot.cpp \
 		$(BUILD_DIR)/operators_lib.o \
-		$(QT_LDFLAGS) -o $@
+		$(QT_LDFLAGS) $(FS_LIBS) -o $@
 	@echo "GUI binary created: $@"
 	@echo "Run with: ./$(GUI_CPU_BIN)"
 
@@ -147,7 +152,7 @@ $(GUI_CUDA_BIN): $(BUILD_DIR)/moc_main_window.cpp $(BUILD_DIR)/moc_simulation_wo
 		$(GUI_MAIN) $(GUI_MAINWINDOW) $(GUI_WORKER) $(GUI_QCUSTOMPLOT) \
 		$(BUILD_DIR)/moc_main_window.cpp $(BUILD_DIR)/moc_simulation_worker.cpp $(BUILD_DIR)/moc_qcustomplot.cpp \
 		$(BUILD_DIR)/operators_lib_cuda.o $(BUILD_DIR)/cuda_solver_gui.o \
-		$(QT_LDFLAGS) -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas -o $@
+		$(QT_LDFLAGS) -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas $(FS_LIBS) -o $@
 	@echo "GUI binary (CUDA) created: $@"
 	@echo "Run with: ./$(GUI_CUDA_BIN)"
 
@@ -173,10 +178,10 @@ $(OPERATORS_CPP_BIN): $(OP_CPP_SRC) $(OP_CPP_DIR)/operators.hpp $(OP_CPP_DIR)/so
 	@if command -v $(NVCC) >/dev/null 2>&1; then \
 		echo "Compiling CUDA backend for operators_cpp..."; \
 		$(NVCC) $(NVCCFLAGS) -c $(OP_CPP_CUDA_SRC) -o $(OP_CPP_CUDA_OBJ); \
-		$(CXX) $(CXXFLAGS) -DMAGSPIN_USE_CUDA -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) $(OP_CPP_CUDA_OBJ) -o $@ $(PY_LDFLAGS) $(PY_RPATH) -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas; \
+		$(CXX) $(CXXFLAGS) -DMAGSPIN_USE_CUDA -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) $(OP_CPP_CUDA_OBJ) -o $@ $(PY_LDFLAGS) $(PY_RPATH) -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas $(FS_LIBS); \
 	else \
 		echo "nvcc not found; building CPU-only operators_cpp binary."; \
-		$(CXX) $(CXXFLAGS) -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) -o $@ $(PY_LDFLAGS) $(PY_RPATH); \
+		$(CXX) $(CXXFLAGS) -DWITHOUT_NUMPY $(PY_INCLUDES) -Ithird_party/matplotlib-cpp $(OP_CPP_SRC) -o $@ $(PY_LDFLAGS) $(PY_RPATH) $(FS_LIBS); \
 	fi
 	@echo "Operators C++ binary created: $@"
 
@@ -199,7 +204,7 @@ matrix-solver: $(MATRIX_SOLVER_CPU)
 $(MATRIX_SOLVER_CPU): $(SRC_DIR)/matrix_solver.cpp
 	@echo "Building matrix solver (CPU version)..."
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@ $(FS_LIBS)
 	@echo "Matrix solver binary created: $@"
 	@echo "Usage: $@ <matrix_file.txt> [--cuda]"
 
@@ -214,7 +219,7 @@ $(MATRIX_SOLVER_CUDA): $(SRC_DIR)/matrix_solver.cpp $(CUDA_SRC)
 	$(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c $(CUDA_SRC) -o $(BUILD_DIR)/cuda_solver_matrix.o
 	# Compile and link matrix solver with CUDA
 	$(CXX) $(CXXFLAGS) -DUSE_CUDA $< $(BUILD_DIR)/cuda_solver_matrix.o \
-		-o $@ -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas
+		-o $@ -L/usr/local/cuda/lib64 -lcusolver -lcudart -lcublas $(FS_LIBS)
 	@echo "Matrix solver (CUDA) binary created: $@"
 	@echo "Usage: $@ <matrix_file.txt> --cuda"
 

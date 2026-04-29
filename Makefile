@@ -15,7 +15,8 @@ ifeq ($(shell [ "$(CXX_MAJOR)" -lt 9 ] >/dev/null 2>&1 && echo yes),yes)
 FS_LIBS += -lstdc++fs
 endif
 PY_INCLUDES = $(shell python3-config --includes 2>/dev/null)
-PY_LDFLAGS = $(shell python3-config --embed --ldflags 2>/dev/null || python3-config --ldflags 2>/dev/null)
+PY_LDFLAGS_RAW = $(shell python3-config --embed --ldflags 2>/dev/null || python3-config --ldflags 2>/dev/null)
+PY_LDFLAGS = $(shell printf "%s\n" '$(PY_LDFLAGS_RAW)' | sed -E 's#(^|[[:space:]])[^[:space:]]*/libpython([0-9]+\.[0-9]+)[^[:space:]]*\.a([[:space:]]|$$)# -lpython\2 #g; s/(^|[[:space:]])-flto([^[:space:]]*)?([[:space:]]|$$)/ /g; s/(^|[[:space:]])-fuse-linker-plugin([[:space:]]|$$)/ /g')
 PY_RPATH = -Wl,-rpath,$(shell python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')")
 
 # Qt settings
